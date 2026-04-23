@@ -1,0 +1,49 @@
+import type { User } from '@/types';
+
+export const mockUsers: User[] = [
+  {
+    id: '00000000-0001-0001-0001-000000000001',
+    name: 'Rafael',
+    role: 'admin',
+    username: 'rafael',
+    password: 'Rafael2026',
+    isActive: true,
+    createdAt: '2023-01-01T00:00:00Z',
+  },
+  {
+    id: '00000000-0002-0002-0002-000000000002',
+    name: 'María González Pérez',
+    role: 'cashier',
+    accessCode: '1234',
+    branchId: 'a1b2c3d4-0001-0001-0001-000000000001',
+    isActive: true,
+    createdAt: '2023-01-15T08:00:00Z',
+  },
+  {
+    id: '00000000-0003-0003-0003-000000000003',
+    name: 'Juan Carlos Martínez',
+    role: 'cashier',
+    accessCode: '5678',
+    branchId: 'a1b2c3d4-0001-0001-0001-000000000001',
+    isActive: true,
+    createdAt: '2023-02-01T08:00:00Z',
+  },
+  {
+    id: '00000000-0004-0004-0004-000000000004',
+    name: 'Ana Luisa Rodríguez',
+    role: 'cashier',
+    accessCode: '9012',
+    branchId: 'a1b2c3d4-0002-0002-0002-000000000002',
+    isActive: true,
+    createdAt: '2023-03-20T08:00:00Z',
+  },
+  {
+    id: '00000000-0005-0005-0005-000000000005',
+    name: 'Carlos Alberto Sánchez',
+    role: 'cashier',
+    accessCode: '3456',
+    branchId: 'a1b2c3d4-0003-0003-0003-000000000003',
+    isActive: true,
+    createdAt: '2023-06-25T08:00:00Z',
+  },
+];
