@@ -69,10 +69,27 @@ export default defineConfig({
       dts: true,
     }),
   ],
-  base,
+  base: './',
   build: {
-    sourcemap: true,
+    sourcemap: false,
     outDir: 'out',
+    assetsDir: 'assets',
+    rollupOptions: {
+      output: {
+        entryFileNames: 'js/[name]-[hash].js',
+        chunkFileNames: 'js/[name]-[hash].js',
+        assetFileNames: (assetInfo) => {
+          const info = assetInfo.name || '';
+          if (info.endsWith('.css')) {
+            return 'css/[name]-[hash][extname]';
+          }
+          if (/\.(png|jpe?g|gif|svg|webp|ico)$/i.test(info)) {
+            return 'assets/[name]-[hash][extname]';
+          }
+          return 'assets/[name]-[hash][extname]';
+        },
+      },
+    },
   },
   resolve: {
     alias: {
