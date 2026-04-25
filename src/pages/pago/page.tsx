@@ -19,6 +19,7 @@ import SavedTicketsModal from './components/SavedTicketsModal';
 import BuscadorStockModal from './components/BuscadorStockModal';
 import ProductPreviewModal from './components/ProductPreviewModal';
 import { saveBillingToSupabase } from '@/services/billingService';
+import BarcodeDisplay from './components/BarcodeDisplay';
 
 const NCF_OPTIONS: { value: NCFType; label: string; color: string }[] = [
   { value: 'B02', label: 'B02 – Consumidor Final', color: 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300' },
@@ -28,8 +29,11 @@ const NCF_OPTIONS: { value: NCFType; label: string; color: string }[] = [
 ];
 
 export default function PagoPage() {
-  const { currentUser, currentBranch } = useAuthStore();
-  const { isSoundEnabled } = useAppStore();
+  const { currentUser, currentBranch, companySettings, loadCompanySettings } = useAuthStore();
+  const { isSoundEnabled, settings: appSettings } = useAppStore();
+
+  // Datos de empresa: prioridad companySettings (DB) > appSettings (local)
+  const company = companySettings ?? appSettings;
   const {
     products, cart, addToCart, removeFromCart, updateCartQuantity,
     updateLineDiscount, clearCart, globalDiscount, setGlobalDiscount,
@@ -59,8 +63,13 @@ export default function PagoPage() {
   const [localClientName, setLocalClientName] = useState(clientName);
   // Billing state
   const [isSaving, setIsSaving] = useState(false);
-  const [saleResult, setSaleResult] = useState<{ ncf: string; total: number; facturaId: string } | null>(null);
+  const [saleResult, setSaleResult] = useState<{ ncf: string; total: number; facturaId: string; numeroFactura?: number } | null>(null);
   const [billingError, setBillingError] = useState<string | null>(null);
+
+  // Cargar configuración de empresa al montar
+  useEffect(() => {
+    loadCompanySettings();
+  }, []);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   const discountRef = useRef<HTMLInputElement>(null);
@@ -158,6 +167,7 @@ export default function PagoPage() {
       ncf: billingResult.ncf || sale?.ncf || '',
       total,
       facturaId: billingResult.facturaId || '',
+      numeroFactura: billingResult.numeroFactura,
     });
   };
 
@@ -769,11 +779,24 @@ export default function PagoPage() {
 
             {/* Ticket body */}
             <div className="px-5 py-4">
-              {/* Empresa */}
+              {/* Empresa + Sucursal */}
               <div className="text-center mb-4">
-                <p className="font-bold text-slate-800 dark:text-white text-sm">Farmacia GENOSAN</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400">RNC: 1-01-00000-0</p>
-                {currentBranch && <p className="text-xs text-slate-500 dark:text-slate-400">{currentBranch.name}</p>}
+                {company.logo && (
+                  <img src={company.logo} alt="Logo" className="h-10 mx-auto mb-2 object-contain" />
+                )}
+                {/* Sucursal — grande y prominente */}
+                {currentBranch && (
+                  <p className="font-black text-slate-800 dark:text-white tracking-wide" style={{ fontSize: '15px' }}>
+                    {currentBranch.name.toUpperCase()}
+                  </p>
+                )}
+                {/* Empresa — pequeña, debajo */}
+                <p className="text-slate-500 dark:text-slate-400 mt-0.5" style={{ fontSize: '11px' }}>
+                  {company.name}
+                </p>
+                {company.rnc && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">RNC: {company.rnc}</p>}
+                {company.phone && <p className="text-xs text-slate-500 dark:text-slate-400">Tel: {company.phone}</p>}
+                {company.address && <p className="text-xs text-slate-500 dark:text-slate-400">{company.address}</p>}
               </div>
 
               {/* Línea punteada */}
@@ -821,7 +844,7 @@ export default function PagoPage() {
               {/* Línea punteada */}
               <div className="border-t border-dashed border-slate-300 dark:border-slate-600 my-3" />
 
-              {/* NCF + ID */}
+              {/* NCF + Info */}
               <div className="space-y-1.5 text-xs">
                 <div className="flex justify-between">
                   <span className="text-slate-500 dark:text-slate-400">NCF (DGII)</span>
@@ -835,13 +858,30 @@ export default function PagoPage() {
                   <span className="text-slate-500 dark:text-slate-400">Cajero</span>
                   <span className="font-medium text-slate-700 dark:text-slate-300">{currentUser?.name}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-slate-500 dark:text-slate-400">ID Factura</span>
-                  <span className="font-mono text-slate-400 text-xs">{saleResult.facturaId.slice(0, 8)}...</span>
-                </div>
               </div>
 
-              <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-4 italic">
+              {/* Código de barras + Número de factura */}
+              {saleResult.numeroFactura && (
+                <div className="mt-3 pt-3 border-t border-dashed border-slate-300 dark:border-slate-600">
+                  <p className="text-center text-xs text-slate-400 mb-2 font-medium uppercase tracking-wider">Código de Factura</p>
+                  <div className="flex flex-col items-center gap-1 bg-white rounded-lg p-2 border border-slate-100">
+                    <BarcodeDisplay
+                      value={String(saleResult.numeroFactura).padStart(10, '0')}
+                      width={1.8}
+                      height={55}
+                      fontSize={11}
+                      displayValue={false}
+                      className="w-full max-w-[220px]"
+                    />
+                    <p className="font-mono font-black text-slate-800 text-lg tracking-[0.2em] leading-none">
+                      {String(saleResult.numeroFactura).padStart(10, '0')}
+                    </p>
+                    <p className="text-[10px] text-slate-400">N° Factura</p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-center text-xs text-slate-400 dark:text-slate-500 mt-3 italic">
                 ¡Gracias por su compra!
               </p>
             </div>
@@ -857,13 +897,21 @@ export default function PagoPage() {
               <button
                 onClick={() => {
                   if (saleResult) {
+                    const companyLine = (company.name || 'FARMACIA').toUpperCase().padStart(20 + Math.floor((company.name || '').length / 2), ' ');
+                    const rncLine = company.rnc ? `RNC: ${company.rnc}` : '';
+                    const phoneLine = company.phone ? `Tel: ${company.phone}` : '';
+                    const numFactura = saleResult.numeroFactura
+                      ? String(saleResult.numeroFactura).padStart(10, '0')
+                      : saleResult.facturaId.slice(0, 8);
                     const lines = [
                       '================================',
-                      '       FARMACIA GENOSAN         ',
-                      '      RNC: 1-01-00000-0         ',
+                      companyLine,
+                      rncLine,
+                      phoneLine,
                       currentBranch?.name || '',
                       '================================',
                       `Fecha: ${new Date().toLocaleString('es-DO')}`,
+                      `Cajero: ${currentUser?.name || ''}`,
                       '--------------------------------',
                       ...cart.map((i) => `${i.quantity}x ${i.product.commercialName.slice(0,20).padEnd(20)} ${formatCurrency(i.quantity * i.unitPrice * (1 - i.lineDiscount / 100))}`),
                       '--------------------------------',
@@ -871,8 +919,8 @@ export default function PagoPage() {
                       `ITBIS 18%: ${formatCurrency(itbis)}`,
                       `TOTAL:     ${formatCurrency(saleResult.total)}`,
                       '================================',
-                      `NCF: ${saleResult.ncf}`,
-                      `ID:  ${saleResult.facturaId}`,
+                      `NCF:       ${saleResult.ncf}`,
+                      `No. Factura: ${numFactura}`,
                       '================================',
                       '      ¡Gracias por su compra!   ',
                     ];

@@ -1,8 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore } from '@/store/appStore';
+import { useAuthStore } from '@/store/authStore';
 
 export default function FacturaEditor() {
   const { settings, updateSettings, printerSettings, updatePrinterSettings } = useAppStore();
+  const { companySettings, currentUser, currentBranch } = useAuthStore();
+  // Datos de empresa: prioridad companySettings (DB) > settings (local)
+  const company = companySettings ?? settings;
 
   const [invoiceHeader, setInvoiceHeader] = useState(
     (settings as unknown as Record<string, string>).invoiceHeader || ''
@@ -16,6 +20,30 @@ export default function FacturaEditor() {
   const [showLogo, setShowLogo] = useState(printerSettings.printLogo);
   const [printFormat, setPrintFormat] = useState<'80mm' | 'carta'>(settings.printFormat || '80mm');
   const [saved, setSaved] = useState(false);
+
+  // Barcode canvas ref for preview
+  const barcodeRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = barcodeRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    // Draw a simple fake barcode for preview
+    canvas.width = 180;
+    canvas.height = 40;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0, 0, 180, 40);
+    ctx.fillStyle = '#1e293b';
+    const pattern = [2,1,3,1,2,2,1,3,2,1,1,2,3,1,2,1,3,2,1,2,1,1,3,2,1,2,2,1,3,1,2,1,2,3,1,2,1,3,1,2];
+    let x = 4;
+    pattern.forEach((w, i) => {
+      if (i % 2 === 0) {
+        ctx.fillRect(x, 4, w * 2.5, 28);
+      }
+      x += w * 2.5;
+    });
+  }, []);
 
   const handleSave = () => {
     updateSettings({
@@ -33,12 +61,17 @@ export default function FacturaEditor() {
 
   const colorOptions = [
     { label: 'Verde Esmeralda', value: '#10b981' },
-    { label: 'Azul Marino', value: '#1e40af' },
     { label: 'Rojo', value: '#dc2626' },
     { label: 'Naranja', value: '#ea580c' },
-    { label: 'Morado', value: '#7c3aed' },
     { label: 'Negro', value: '#1e293b' },
+    { label: 'Teal', value: '#0d9488' },
+    { label: 'Índigo', value: '#4f46e5' },
   ];
+
+  const today = new Date().toLocaleDateString('es-DO');
+  const timeNow = new Date().toLocaleTimeString('es-DO', { hour: '2-digit', minute: '2-digit' });
+  const branchName = currentBranch?.name || 'SUCURSAL PRINCIPAL';
+  const companyName = company.name || 'FARMACIA GENOSAN';
 
   return (
     <div className="space-y-5">
@@ -152,72 +185,197 @@ export default function FacturaEditor() {
           {/* Columna derecha: vista previa */}
           <div>
             <label className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2 block">
-              Vista Previa
+              Vista Previa del Recibo
             </label>
-            <div className={`bg-white border border-slate-200 rounded-lg overflow-hidden ${printFormat === '80mm' ? 'max-w-[280px] mx-auto' : 'w-full'}`}>
-              {/* Header de factura */}
-              <div className="p-3 text-center" style={{ borderBottom: `3px solid ${invoiceColor}` }}>
+
+            {/* Ticket container */}
+            <div
+              className={`bg-white border border-slate-200 rounded-lg overflow-hidden font-mono shadow-sm ${
+                printFormat === '80mm' ? 'max-w-[290px] mx-auto' : 'w-full'
+              }`}
+              style={{ fontSize: '11px' }}
+            >
+              {/* ── ENCABEZADO: barra de color con nombre sucursal ── */}
+              <div
+                className="px-4 pt-4 pb-3 text-center"
+                style={{ borderBottom: `3px solid ${invoiceColor}` }}
+              >
+                {/* Logo */}
                 {showLogo && settings.logo && (
-                  <img src={settings.logo} alt="Logo" className="h-10 mx-auto mb-2 object-contain" />
+                  <img
+                    src={settings.logo}
+                    alt="Logo"
+                    className="h-9 mx-auto mb-2 object-contain"
+                  />
                 )}
-                <p className="font-bold text-slate-800 text-sm">{settings.name}</p>
-                <p className="text-xs text-slate-500">RNC: {settings.rnc}</p>
-                <p className="text-xs text-slate-500">{settings.address}</p>
-                <p className="text-xs text-slate-500">Tel: {settings.phone}</p>
+
+                {/* SUCURSAL — grande y prominente */}
+                <p
+                  className="font-black tracking-wide leading-tight"
+                  style={{ fontSize: '15px', color: invoiceColor }}
+                >
+                  {branchName.toUpperCase()}
+                </p>
+
+                {/* Empresa — pequeña, debajo */}
+                <p className="text-slate-500 mt-0.5" style={{ fontSize: '10px' }}>
+                  {companyName}
+                </p>
+
+                {/* Datos de contacto */}
+                {company.rnc && (
+                  <p className="text-slate-500 mt-1" style={{ fontSize: '10px' }}>
+                    RNC: {company.rnc}
+                  </p>
+                )}
+                {company.address && (
+                  <p className="text-slate-400 leading-tight" style={{ fontSize: '9px' }}>
+                    {company.address}
+                  </p>
+                )}
+                {company.phone && (
+                  <p className="text-slate-500" style={{ fontSize: '10px' }}>
+                    Tel: {company.phone}
+                  </p>
+                )}
                 {invoiceHeader && (
-                  <p className="text-xs mt-1 text-slate-600 italic">{invoiceHeader}</p>
+                  <p className="text-slate-500 italic mt-1" style={{ fontSize: '9px' }}>
+                    {invoiceHeader}
+                  </p>
                 )}
               </div>
 
-              {/* Línea de factura */}
-              <div className="px-3 py-2" style={{ backgroundColor: invoiceColor + '15' }}>
+              {/* ── INFO FACTURA ── */}
+              <div
+                className="px-3 py-2"
+                style={{ backgroundColor: invoiceColor + '18' }}
+              >
                 <div className="flex justify-between items-center">
-                  <span className="text-xs font-bold" style={{ color: invoiceColor }}>FACTURA</span>
-                  <span className="text-xs text-slate-500 font-mono">B0200000001</span>
+                  <span className="font-bold tracking-wider" style={{ color: invoiceColor, fontSize: '11px' }}>
+                    FACTURA
+                  </span>
+                  <span className="text-slate-500 font-mono" style={{ fontSize: '10px' }}>
+                    B0200000001
+                  </span>
                 </div>
-                <div className="flex justify-between text-xs text-slate-500 mt-0.5">
-                  <span>Fecha: {new Date().toLocaleDateString('es-DO')}</span>
-                  <span>Cajero: Admin</span>
+                <div className="flex justify-between text-slate-500 mt-0.5" style={{ fontSize: '9px' }}>
+                  <span>Fecha: {today} {timeNow}</span>
+                  <span>Cajero: {currentUser?.name || 'Admin'}</span>
+                </div>
+                <div className="text-slate-400 mt-0.5" style={{ fontSize: '9px' }}>
+                  Cliente: Consumidor Final
                 </div>
               </div>
 
-              {/* Items de ejemplo */}
-              <div className="px-3 py-2 space-y-1">
-                <div className="flex justify-between text-xs text-slate-700">
-                  <span>Paracetamol 500mg x2</span>
-                  <span className="font-mono">RD$120.00</span>
+              {/* ── LÍNEA PUNTEADA ── */}
+              <div className="mx-3 border-t border-dashed border-slate-300 my-2" />
+
+              {/* ── ITEMS ── */}
+              <div className="px-3 space-y-1.5">
+                {[
+                  { name: 'Paracetamol 500mg', qty: 2, price: 'RD$120.00' },
+                  { name: 'Amoxicilina 500mg', qty: 1, price: 'RD$85.00' },
+                  { name: 'Vitamina C 1000mg', qty: 3, price: 'RD$210.00' },
+                ].map((item, i) => (
+                  <div key={i} className="flex justify-between text-slate-700">
+                    <div className="flex-1 min-w-0">
+                      <span className="block truncate">{item.name}</span>
+                      <span className="text-slate-400" style={{ fontSize: '9px' }}>
+                        {item.qty} x {item.price.replace('RD$', 'RD$').split('.')[0].replace(/\d+$/, (n) => String(Math.round(parseInt(n) / item.qty)))}
+                      </span>
+                    </div>
+                    <span className="font-mono ml-2 flex-shrink-0">{item.price}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* ── LÍNEA PUNTEADA ── */}
+              <div className="mx-3 border-t border-dashed border-slate-300 my-2" />
+
+              {/* ── TOTALES ── */}
+              <div className="px-3 space-y-1">
+                <div className="flex justify-between text-slate-500">
+                  <span>Subtotal</span>
+                  <span className="font-mono">RD$415.00</span>
                 </div>
-                <div className="flex justify-between text-xs text-slate-700">
-                  <span>Amoxicilina 500mg x1</span>
+                <div className="flex justify-between text-slate-500">
+                  <span>ITBIS (18%)</span>
+                  <span className="font-mono">RD$0.00</span>
+                </div>
+                <div className="flex justify-between text-slate-500">
+                  <span>Descuento</span>
+                  <span className="font-mono">RD$0.00</span>
+                </div>
+                <div
+                  className="flex justify-between font-black pt-1 border-t border-slate-200"
+                  style={{ color: invoiceColor, fontSize: '13px' }}
+                >
+                  <span>TOTAL</span>
+                  <span className="font-mono">RD$415.00</span>
+                </div>
+                <div className="flex justify-between text-slate-500 pt-0.5" style={{ fontSize: '9px' }}>
+                  <span>Método de pago</span>
+                  <span className="font-medium">Efectivo</span>
+                </div>
+                <div className="flex justify-between text-slate-500" style={{ fontSize: '9px' }}>
+                  <span>Vuelto</span>
                   <span className="font-mono">RD$85.00</span>
                 </div>
               </div>
 
-              {/* Totales */}
-              <div className="px-3 py-2 border-t border-dashed border-slate-200 space-y-0.5">
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>Subtotal</span><span className="font-mono">RD$205.00</span>
-                </div>
-                <div className="flex justify-between text-xs text-slate-500">
-                  <span>ITBIS (18%)</span><span className="font-mono">RD$0.00</span>
-                </div>
-                <div className="flex justify-between text-sm font-bold mt-1" style={{ color: invoiceColor }}>
-                  <span>TOTAL</span><span className="font-mono">RD$205.00</span>
-                </div>
+              {/* ── LÍNEA PUNTEADA ── */}
+              <div className="mx-3 border-t border-dashed border-slate-300 my-2" />
+
+              {/* ── CÓDIGO DE BARRAS ── */}
+              <div className="px-3 pb-1 flex flex-col items-center">
+                <p className="text-slate-400 uppercase tracking-widest mb-1" style={{ fontSize: '8px' }}>
+                  Código de Factura
+                </p>
+                <canvas ref={barcodeRef} className="w-full max-w-[180px]" style={{ height: '40px' }} />
+                <p className="font-mono font-black text-slate-800 tracking-[0.15em] mt-0.5" style={{ fontSize: '12px' }}>
+                  0000001001
+                </p>
+                <p className="text-slate-400" style={{ fontSize: '8px' }}>N° Factura</p>
               </div>
 
-              {/* Footer */}
+              {/* ── LÍNEA PUNTEADA ── */}
+              <div className="mx-3 border-t border-dashed border-slate-300 my-2" />
+
+              {/* ── NCF ── */}
+              <div className="px-3 pb-2 text-center">
+                <p className="text-slate-400 uppercase tracking-widest" style={{ fontSize: '8px' }}>
+                  Comprobante Fiscal (DGII)
+                </p>
+                <p className="font-mono font-bold tracking-wider" style={{ color: invoiceColor, fontSize: '11px' }}>
+                  B0200000001
+                </p>
+              </div>
+
+              {/* ── PIE DE PÁGINA ── */}
               {invoiceFooter && (
-                <div className="px-3 py-2 text-center border-t border-dashed border-slate-200">
-                  <p className="text-xs text-slate-500 italic">{invoiceFooter}</p>
+                <div
+                  className="px-3 py-2 text-center"
+                  style={{ backgroundColor: invoiceColor + '12', borderTop: `1px dashed ${invoiceColor}40` }}
+                >
+                  <p className="text-slate-500 italic" style={{ fontSize: '9px' }}>
+                    {invoiceFooter}
+                  </p>
                 </div>
               )}
-              {settings.website && (
-                <div className="px-3 pb-2 text-center">
-                  <p className="text-xs text-slate-400">{settings.website}</p>
+
+              {/* Website */}
+              {company.website && (
+                <div className="px-3 pb-3 text-center">
+                  <p className="text-slate-400" style={{ fontSize: '9px' }}>{company.website}</p>
                 </div>
               )}
             </div>
+
+            {/* Nota informativa */}
+            <p className="text-xs text-slate-400 dark:text-slate-500 mt-2 text-center">
+              <i className="ri-information-line mr-1"></i>
+              Vista previa — los datos reales se toman de Configuración
+            </p>
           </div>
         </div>
 

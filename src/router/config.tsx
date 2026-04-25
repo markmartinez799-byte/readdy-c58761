@@ -11,6 +11,8 @@ import ConfiguracionPage from "@/pages/configuracion/page";
 import ProveedoresPage from "@/pages/proveedores/page";
 import ComprasPage from "@/pages/compras/page";
 import VencimientosPage from "@/pages/vencimientos/page";
+import ListaInteresPage from "@/pages/lista-interes/page";
+import BuscarFacturaPage from "@/pages/buscar-factura/page";
 
 const routes: RouteObject[] = [
   {
@@ -33,6 +35,8 @@ const routes: RouteObject[] = [
       { path: "proveedores", element: <ProveedoresPage /> },
       { path: "compras", element: <ComprasPage /> },
       { path: "vencimientos", element: <VencimientosPage /> },
+      { path: "lista-interes", element: <ListaInteresPage /> },
+      { path: "buscar-factura", element: <BuscarFacturaPage /> },
     ],
   },
   {

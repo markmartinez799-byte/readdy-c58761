@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Package, BarChart3, Settings, CreditCard, Truck, ShoppingBag, AlertTriangle } from 'lucide-react';
+import { LayoutDashboard, Package, BarChart3, Settings, CreditCard, Truck, ShoppingBag, AlertTriangle, Heart, ScanLine } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { usePOSStore } from '@/store/posStore';
 
@@ -18,6 +18,8 @@ const navItems: NavItem[] = [
   { path: '/proveedores', label: 'Proveedores', icon: <Truck className="w-5 h-5" />, roles: ['admin'] },
   { path: '/compras', label: 'Compras', icon: <ShoppingBag className="w-5 h-5" />, roles: ['admin'] },
   { path: '/vencimientos', label: 'Vencimientos', icon: <AlertTriangle className="w-5 h-5" />, roles: ['admin'] },
+  { path: '/lista-interes', label: 'Lista de Interés', icon: <Heart className="w-5 h-5" />, roles: ['admin', 'cashier'] },
+  { path: '/buscar-factura', label: 'Buscar Factura', icon: <ScanLine className="w-5 h-5" />, roles: ['admin', 'cashier'] },
   { path: '/reportes', label: 'Reportes', icon: <BarChart3 className="w-5 h-5" />, roles: ['admin'] },
   { path: '/configuracion', label: 'Configuración', icon: <Settings className="w-5 h-5" />, roles: ['admin'] },
 ];

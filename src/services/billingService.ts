@@ -18,6 +18,7 @@ export interface BillingResult {
   success: boolean;
   facturaId?: string;
   ncf?: string;
+  numeroFactura?: number;
   error?: string;
 }
 
@@ -106,7 +107,7 @@ export async function saveBillingToSupabase(payload: BillingPayload): Promise<Bi
         total: payload.total,
         estado: 'activa',
       })
-      .select('id, ncf')
+      .select('id, ncf, numero_factura')
       .single();
 
     if (facturaError) {
@@ -163,7 +164,7 @@ export async function saveBillingToSupabase(payload: BillingPayload): Promise<Bi
       };
     }
 
-    return { success: true, facturaId, ncf: ncfReal };
+    return { success: true, facturaId, ncf: ncfReal, numeroFactura: factura.numero_factura };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error desconocido';
     console.error('[billing] Error inesperado:', msg);
